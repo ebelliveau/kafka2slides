@@ -99,9 +99,8 @@ public class App {
                     // Create a new slide for each record:
                     Page newSlide = new Page();
 
-                    System.out.printf("offset = %d, value = %s", record.offset(), record.value());
-                    System.out.println();
-
+                    // Actually setting the slide content is an exercise left to the reader.
+                    
                     someBullshitSlides.add(newSlide);
                 }
 
