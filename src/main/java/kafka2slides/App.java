@@ -3,21 +3,141 @@
  */
 package kafka2slides;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Properties;
 
+// probably the only sane 3 libraries used here
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import org.apache.kafka.common.KafkaException; // It's dangerous out there.  Take this.
+import org.apache.kafka.common.config.ConfigException;
+
+// fuck me gently with a chainsaw
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.services.slides.v1.Slides;
+import com.google.api.services.slides.v1.SlidesScopes;
+import com.google.api.services.slides.v1.model.Page;
+import com.google.api.services.slides.v1.model.Presentation;
+
 public class App {
-    public String getGreeting() {
-        // Kept here so the tests will still pass and nobody will suspect a thing.
-        return "Hello pain.";
+    private static final String APPLICATION_NAME = "Google Slides API Java + Kafka QuickShart(TM)";
+    private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+    private static final String TOKENS_DIRECTORY_PATH = "tokens";
+
+    private static final List<String> SCOPES = Collections.singletonList(SlidesScopes.PRESENTATIONS);
+    private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
+
+    private static final String title = "kafka2slides";
+
+    public static void main(String[] args) throws IOException, GeneralSecurityException, FileNotFoundException, KafkaException, ConfigException { // throws harder than an MLB pitcher
+        Properties props = new Properties();
+        props.put("bootstrap.servers", "your-bootstrap-server:9092");   // It's that simple.
+        props.put("zookeeper.connect", "yo-whatup-its-zookeeper:2181"); // Yup, seriously.
+        props.put("group.id", "pitchdeck-consumer-group");              // 
+        props.put("enable.auto.commit", "true");
+        props.put("auto.commit.interval.ms", "1000");
+        props.put("auto.offset.reset", "earliest");
+        props.put("session.timeout.ms", "30000");
+        props.put("key.deserializer",  "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+
+        KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(props);
+        System.out.println("Properties loaded.  God help us all.");
+        kafkaConsumer.subscribe(Arrays.asList("pitchdeck"));
+
+        // set up the Google client OAuth shit
+
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+        // here be dragons
+        while (true) {
+            // oh no
+            ConsumerRecords<String, String> records = kafkaConsumer.poll(100); //yes, 100 slides per pitch deck is totally normal coming from Kafka
+            if(records.count() == 0) {
+                return;
+            }
+            // please, stop
+
+            Slides service = new Slides.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+
+            try {
+
+                Presentation presentation = new Presentation()
+                    .setTitle(title);
+
+                presentation = service.presentations().create(presentation)
+                    .setFields("presentationId")
+                    .execute();
+                
+                System.out.println("Created presentation with ID: " + presentation.getPresentationId());
+                
+                List<Page> someBullshitSlides = new ArrayList<Page>();
+
+                for (ConsumerRecord<String, String> record : records) {
+                    
+                    // Create a new slide for each record:
+                    Page newSlide = new Page();
+
+                    System.out.printf("offset = %d, value = %s", record.offset(), record.value());
+                    System.out.println();
+
+                    someBullshitSlides.add(newSlide);
+                }
+
+                presentation.setSlides(someBullshitSlides);
+
+            } catch (IOException oops) {
+                System.out.println("Surprised it's made it this far.  Still broke tho.");
+                System.out.println(oops.getMessage());
+            } catch (KafkaException oops) {
+                System.out.println("Something's wrong with your kafka server idk");
+                System.out.println(oops.getMessage());
+            } 
+        }
+
     }
 
-    
-    public static void main(String[] args) {
-        
+    public String getGreeting() {
+        // Kept here so the tests will still pass and nobody will suspect a thing.
+        return "Hello, pain.";
+    }
+
+    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+        // Load client secrets.
+        InputStream in = App.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+        if (in == null) {
+            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+        }
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+        // Build flow and trigger user authorization request.
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+                .setAccessType("offline")
+                .build();
+        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
     }
 }

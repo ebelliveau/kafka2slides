@@ -16,9 +16,10 @@ Next up, go download your credentials.json from the Google Slides API (I used "d
 
 Don't even ask me for help setting up Kafka for you.
 
-This trash heap will subscribe to the `"pitchdeck"` topic.  No, I won't change it for you.
+This trash heap will subscribe to the `"pitchdeck"` topic in the `"pitchdeck-consumer-group"` consumer group.  No, I won't change it for you.
 
 Go publish some crap to the `pitchdeck` topic.  This dumpsterfire will magically litter your Slides account with new pitchdecks featuring whatever the hell you publish to the `pitchdeck` topic.
 
 --
+
 Built with 💩 in :canada:
