@@ -28,6 +28,10 @@ dependencies {
     // Use JUnit test framework
     testImplementation 'junit:junit:4.13'
 
+    // I'm so sorry for this
+    // https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
+    compile group: 'org.apache.kafka', name: 'kafka-clients', version: '2.6.0'
+
     // Gimme dat wet ass pitchdeck
     compile 'com.google.api-client:google-api-client:1.23.0'
     compile 'com.google.oauth-client:google-oauth-client-jetty:1.23.0'

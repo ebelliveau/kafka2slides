@@ -3,12 +3,21 @@
  */
 package kafka2slides;
 
+import java.util.Arrays;
+import java.util.Properties;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+
 public class App {
     public String getGreeting() {
-        return "Hello world.";
+        // Kept here so the tests will still pass and nobody will suspect a thing.
+        return "Hello pain.";
     }
 
+    
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        
     }
 }
