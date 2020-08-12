@@ -1,2 +1,3 @@
 # kafka2slides
-Y'all wanna build a slide deck and only have Kafka and a Google Slides account?  Look no further!
+Have you ever wanted to build a slide deck but only have Kafka and a Google Slides account? Look no further! 
+
